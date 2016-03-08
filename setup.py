@@ -30,6 +30,8 @@ setup(
         'django-mptt>=0.6,<0.9',  # the exact version depends on Django
         'django_polymorphic>=0.7,<0.9',
         'Unidecode>=0.04,<0.05',
+        'django-classy-tags',
+        'yurl',
     ),
     include_package_data=True,
     zip_safe=False,

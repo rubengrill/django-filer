@@ -54,3 +54,7 @@ def userperms_for_request(item, request):
             if x:
                 r.append(p)
     return r
+
+
+def admin_response_was_successful_save(response):
+    pass

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django import forms
+from django.contrib import admin
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect
 from django.utils.translation import ugettext as _
@@ -10,7 +11,7 @@ from filer.admin.permissions import PrimitivePermissionAwareModelAdmin
 from filer.models import File, Image
 from filer.utils.compatibility import LTE_DJANGO_1_5, unquote
 from filer.views import (popup_param, selectfolder_param, popup_status,
-                         selectfolder_status)
+                         selectfolder_status, AdminUrlParams)
 
 
 class FileAdminChangeFrom(forms.ModelForm):
@@ -64,11 +65,14 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
         Overrides the default to be able to forward to the directory listing
         instead of the default change_list_view
         """
-        r = super(FileAdmin, self).response_change(request, obj)
-        if 'Location' in r and r['Location']:
+        response = super(FileAdmin, self).response_change(request, obj)
+        import ipdb; ipdb.set_trace()
+
+        if admin.options.IS_POPUP_VAR in request.POST:
+        # if 'Location' in response and response['Location']:
             # it was a successful save
-            if (r['Location'] in ['../'] or
-                    r['Location'] == self._get_post_url(obj)):
+            if (response['Location'] in ['../'] or
+                    response['Location'] == self._get_post_url(obj)):
                 # this means it was a save: redirect to the directory view
                 if obj.folder:
                     url = reverse('admin:filer-directory_listing',
@@ -82,13 +86,13 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
             else:
                 # this means it probably was a save_and_continue_editing
                 pass
-        return r
+        return response
 
     def render_change_form(self, request, context, add=False, change=False,
                            form_url='', obj=None):
         extra_context = {'show_delete': True,
                          'is_popup': popup_status(request),
-                         'select_folder': selectfolder_status(request), }
+                         'filer_admin_context': AdminUrlParams(request), }
         context.update(extra_context)
         return super(FileAdmin, self).render_change_form(
             request=request, context=context, add=False, change=False,

@@ -37,7 +37,7 @@ class AdminFolderWidget(ForeignKeyRawIdWidget):
         if not related_url:
             related_url = reverse('admin:filer-directory_listing-last')
         params = self.url_parameters()
-        params['select_folder'] = 1
+        params['_pick'] = 'folder'
         if params:
             url = '?' + '&amp;'.join(['%s=%s' % (k, v) for k, v in list(params.items())])
         else:

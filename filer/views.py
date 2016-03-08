@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django import forms
+from django.contrib import admin
 from django.contrib.admin import widgets
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -11,6 +12,13 @@ from django.utils.translation import ugettext_lazy as _
 
 from .models import Folder, File, Image, Clipboard, tools, FolderRoot
 from . import settings as filer_settings
+
+try:
+    from urllib import urlencode
+except:  # For Python 3
+    from urllib.parse import urlencode
+
+ALLOWED_PICK_TYPES = ('folder', 'file')
 
 
 class NewFolderForm(forms.ModelForm):
@@ -27,8 +35,13 @@ def popup_status(request):
             '_popup' in request.POST or 'pop' in request.POST)
 
 
-def selectfolder_status(request):
-    return 'select_folder' in request.GET or 'select_folder' in request.POST
+def popup_pick_type(request):
+    # very important to limit the pick_types because the result is marked safe.
+    # (injection attacks)
+    pick_type = request.GET.get('_pick', request.POST.get('_pick', None))
+    if pick_type in ALLOWED_PICK_TYPES:
+        return pick_type
+    return None
 
 
 def popup_param(request, separator="?"):
@@ -38,11 +51,41 @@ def popup_param(request, separator="?"):
         return ""
 
 
-def selectfolder_param(request, separator="&"):
-    if selectfolder_status(request):
-        return "%sselect_folder=1" % separator
-    else:
-        return ""
+def admin_url_params(request):
+    """
+    given a request, looks at GET and POST values to determine which params
+    should be added. Is used to keep the context of popup and picker mode.
+    """
+    # FIXME: put this code in a better location
+    params = {}
+    if popup_status(request):
+        params[admin.options.IS_POPUP_VAR] = '1'
+    pick_type = popup_pick_type(request)
+    if pick_type:
+        params['_pick'] = pick_type
+    return params
+
+
+def admin_url_params_encoded(request, full=True):
+    params = urlencode(admin_url_params(request))
+    if not params:
+        return ''
+    if full:
+        return '?{}'.format(params)
+    return params
+
+
+class AdminUrlParams(dict):
+    def __init__(self, request):
+        super(AdminUrlParams, self).__init__()
+        self.request = request
+        self.update(admin_url_params(request))
+        for key, value in self.items():
+            if key.startswith('_'):
+                self[key[1:]] = value
+            if key == '_pick':
+                for pick_type in ALLOWED_PICK_TYPES:
+                    self['pick_{}'.format(value)] = value == pick_type
 
 
 def _userperms(item, request):
@@ -66,28 +109,6 @@ def canonical(request, uploaded_at, file_id):
             not filer_file.file):
         raise Http404('No %s matches the given query.' % File._meta.object_name)
     return redirect(filer_file.url)
-
-
-@login_required
-def edit_folder(request, folder_id):
-    # TODO: implement edit_folder view
-    folder = None
-    return render(request, 'admin/filer/folder/folder_edit.html', {
-        'folder': folder,
-        'is_popup': popup_status(request),
-        'select_folder': selectfolder_status(request),
-    })
-
-
-@login_required
-def edit_image(request, folder_id):
-    # TODO: implement edit_image view
-    folder = None
-    return render(request, 'filer/image_edit.html', {
-        'folder': folder,
-        'is_popup': popup_status(request),
-        'select_folder': selectfolder_status(request),
-    })
 
 
 @login_required
@@ -129,7 +150,7 @@ def make_folder(request, folder_id=None):
         'opts': Folder._meta,
         'new_folder_form': new_folder_form,
         'is_popup': popup_status(request),
-        'select_folder': selectfolder_status(request),
+        'filer_admin_context': AdminUrlParams(request),
     })
 
 
@@ -141,10 +162,11 @@ class UploadFileForm(forms.ModelForm):
 
 @login_required
 def upload(request):
+    # FIXME: find out if this is still used (template is missing)
     return render(request, 'filer/upload.html', {
         'title': 'Upload files',
         'is_popup': popup_status(request),
-        'select_folder': selectfolder_status(request),
+        'filer_admin_context': AdminUrlParams(request),
     })
 
 

@@ -41,8 +41,12 @@ class AdminFileWidget(ForeignKeyRawIdWidget):
         if not related_url:
             related_url = reverse('admin:filer-directory_listing-last')
         params = self.url_parameters()
+        params['_pick'] = 'file'
         if params:
-            lookup_url = '?' + '&amp;'.join(['%s=%s' % (k, v) for k, v in list(params.items())])
+            lookup_url = '?' + '&amp;'.join([
+                '%s=%s' % (k, v)
+                for k, v in list(params.items())
+            ])
         else:
             lookup_url = ''
         if 'class' not in attrs:

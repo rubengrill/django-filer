@@ -131,6 +131,9 @@ class FilerFolderAdminUrlsTests(TestCase):
         folder = Folder.objects.get(pk=folder.pk)
         self.assertEqual(folder.owner.pk, another_superuser.pk)
 
+    def test_save_file_in_popup_keeps_popup_context(self):
+        pass
+
 
     @skipIf(django.get_version() < '1.7',
             'admin context not supported in django < 1.7')

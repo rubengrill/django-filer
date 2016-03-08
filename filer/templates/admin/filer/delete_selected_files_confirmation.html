@@ -1,5 +1,5 @@
 {% extends "admin/delete_confirmation.html" %}
-{% load i18n %}
+{% load i18n filer_admin_tags %}
 
 {% block breadcrumbs %}
 {% include "admin/filer/breadcrumbs.html" %}
@@ -37,10 +37,7 @@
                 {% for f in folders_queryset %}
                     <input type="hidden" name="{{ action_checkbox_name }}" value="folder-{{ f.pk }}">
                 {% endfor %}
-                {% if is_popup %}
-                    <input type="hidden" name="_popup" value="1">
-                    {% if select_folder %}<input type="hidden" name="select_folder" value="1">{% endif %}
-                {% endif %}
+                {% filer_admin_context_hidden_formfields %}
                 <input type="hidden" name="action" value="delete_files_or_folders">
                 <input type="hidden" name="post" value="yes">
                 <input type="submit" value="{% trans 'Yes, I&#39;m sure' %}">

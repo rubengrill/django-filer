@@ -44,7 +44,8 @@ from filer.utils.compatibility import (
     get_delete_permission, quote, unquote, capfirst)
 from filer.utils.filer_easy_thumbnails import FilerActionThumbnailer
 from filer.views import (popup_status, popup_param, selectfolder_status,
-                         selectfolder_param)
+                         selectfolder_param, admin_url_params_encoded,
+                         admin_url_params, AdminUrlParams)
 
 
 class AddFolderPopupForm(forms.ModelForm):
@@ -144,7 +145,7 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
                            form_url='', obj=None):
         extra_context = {'show_delete': True,
                          'is_popup': popup_status(request),
-                         'select_folder': selectfolder_status(request), }
+                         'filer_admin_context': AdminUrlParams(request), }
         context.update(extra_context)
         return super(FolderAdmin, self).render_change_form(
             request=request, context=context, add=False,
@@ -240,10 +241,10 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
                 Folder.objects.get(id=last_folder_id)
             except Folder.DoesNotExist:
                 url = reverse('admin:filer-directory_listing-root')
-                url = "%s%s%s" % (url, popup_param(request), selectfolder_param(request, "&"))
+                url = "%s%s" % (url, admin_url_params_encoded(request))
             else:
                 url = reverse('admin:filer-directory_listing', kwargs={'folder_id': last_folder_id})
-                url = "%s%s%s" % (url, popup_param(request), selectfolder_param(request, "&"))
+                url = "%s%s" % (url, admin_url_params_encoded(request))
             return HttpResponseRedirect(url)
         elif folder_id is None:
             folder = FolderRoot()
@@ -409,7 +410,7 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
             'folder_files': folder_files,
             'limit_search_to_folder': limit_search_to_folder,
             'is_popup': popup_status(request),
-            'select_folder': selectfolder_status(request),
+            'filer_admin_context': AdminUrlParams(request),
             # needed in the admin/base.html template for logout links
             'root_path': reverse('admin:index'),
             'action_form': action_form,
@@ -747,7 +748,7 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
             "protected": all_protected,
             "opts": opts,
             'is_popup': popup_status(request),
-            'select_folder': selectfolder_status(request),
+            'filer_admin_context': AdminUrlParams(request),
             "root_path": reverse('admin:index'),
             "app_label": app_label,
             "action_checkbox_name": helpers.ACTION_CHECKBOX_NAME,
