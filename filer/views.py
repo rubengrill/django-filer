@@ -66,13 +66,11 @@ def admin_url_params(request):
     return params
 
 
-def admin_url_params_encoded(request, full=True):
+def admin_url_params_encoded(request, first_separator='?'):
     params = urlencode(admin_url_params(request))
     if not params:
         return ''
-    if full:
-        return '?{}'.format(params)
-    return params
+    return '{}{}'.format(first_separator, params)
 
 
 class AdminUrlParams(dict):
@@ -85,7 +83,7 @@ class AdminUrlParams(dict):
                 self[key[1:]] = value
             if key == '_pick':
                 for pick_type in ALLOWED_PICK_TYPES:
-                    self['pick_{}'.format(value)] = value == pick_type
+                    self['pick_{}'.format(pick_type)] = value == pick_type
 
 
 def _userperms(item, request):
@@ -160,14 +158,14 @@ class UploadFileForm(forms.ModelForm):
         exclude = ()
 
 
-@login_required
-def upload(request):
-    # FIXME: find out if this is still used (template is missing)
-    return render(request, 'filer/upload.html', {
-        'title': 'Upload files',
-        'is_popup': popup_status(request),
-        'filer_admin_context': AdminUrlParams(request),
-    })
+# @login_required
+# def upload(request):
+#     # FIXME: find out if this is still used (template is missing)
+#     return render(request, 'filer/upload.html', {
+#         'title': 'Upload files',
+#         'is_popup': popup_status(request),
+#         'filer_admin_context': AdminUrlParams(request),
+#     })
 
 
 @login_required
@@ -183,10 +181,12 @@ def paste_clipboard_to_folder(request):
     redirect = request.GET.get('redirect_to', '')
     if not redirect:
         redirect = request.POST.get('redirect_to', '')
-    return HttpResponseRedirect('%s?order_by=-modified_at%s%s' % (
-                                redirect,
-                                popup_param(request, separator='&'),
-                                selectfolder_param(request)))
+    return HttpResponseRedirect(
+        '{}?order_by=-modified_at{}'.format(
+            redirect,
+            admin_url_params_encoded(request, first_separator='&'),
+        )
+    )
 
 
 @login_required
@@ -194,10 +194,12 @@ def discard_clipboard(request):
     if request.method == 'POST':
         clipboard = Clipboard.objects.get(id=request.POST.get('clipboard_id'))
         tools.discard_clipboard(clipboard)
-    return HttpResponseRedirect('%s%s%s' % (
-                                request.POST.get('redirect_to', ''),
-                                popup_param(request),
-                                selectfolder_param(request)))
+    return HttpResponseRedirect(
+        '{}{}'.format(
+            request.POST.get('redirect_to', ''),
+            admin_url_params_encoded(request, first_separator='&'),
+        )
+    )
 
 
 @login_required
@@ -205,19 +207,9 @@ def delete_clipboard(request):
     if request.method == 'POST':
         clipboard = Clipboard.objects.get(id=request.POST.get('clipboard_id'))
         tools.delete_clipboard(clipboard)
-    return HttpResponseRedirect('%s%s%s' % (
-                                request.POST.get('redirect_to', ''),
-                                popup_param(request),
-                                selectfolder_param(request)))
-
-
-@login_required
-def clone_files_from_clipboard_to_folder(request):
-    if request.method == 'POST':
-        clipboard = Clipboard.objects.get(id=request.POST.get('clipboard_id'))
-        folder = Folder.objects.get(id=request.POST.get('folder_id'))
-        tools.clone_files_from_clipboard_to_folder(clipboard, folder)
-    return HttpResponseRedirect('%s%s%s' % (
-                                request.POST.get('redirect_to', ''),
-                                popup_param(request),
-                                selectfolder_param(request)))
+    return HttpResponseRedirect(
+        '{}{}'.format(
+            request.POST.get('redirect_to', ''),
+            admin_url_params_encoded(request, first_separator='&'),
+        )
+    )

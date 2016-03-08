@@ -10,8 +10,7 @@ from filer import settings
 from filer.admin.permissions import PrimitivePermissionAwareModelAdmin
 from filer.models import File, Image
 from filer.utils.compatibility import LTE_DJANGO_1_5, unquote
-from filer.views import (popup_param, selectfolder_param, popup_status,
-                         selectfolder_status, AdminUrlParams)
+from filer.views import (popup_status, AdminUrlParams, admin_url_params_encoded)
 
 
 class FileAdminChangeFrom(forms.ModelForm):
@@ -65,28 +64,26 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
         Overrides the default to be able to forward to the directory listing
         instead of the default change_list_view
         """
-        response = super(FileAdmin, self).response_change(request, obj)
-        import ipdb; ipdb.set_trace()
-
-        if admin.options.IS_POPUP_VAR in request.POST:
-        # if 'Location' in response and response['Location']:
-            # it was a successful save
-            if (response['Location'] in ['../'] or
-                    response['Location'] == self._get_post_url(obj)):
-                # this means it was a save: redirect to the directory view
-                if obj.folder:
-                    url = reverse('admin:filer-directory_listing',
-                                  kwargs={'folder_id': obj.folder.id})
-                else:
-                    url = reverse(
-                        'admin:filer-directory_listing-unfiled_images')
-                url = "%s%s%s" % (url, popup_param(request),
-                                  selectfolder_param(request, "&"))
-                return HttpResponseRedirect(url)
+        if (
+            admin.options.IS_POPUP_VAR in request.POST and
+            '_pick' in request.POST and
+            '_continue' not in request.POST
+        ):
+            # popup in pick mode. response_change only gets called if the
+            # operation was successful. In pick mode we just want to go
+            # back to the folder list view and keep the params.
+            if obj.folder:
+                url = reverse('admin:filer-directory_listing',
+                              kwargs={'folder_id': obj.folder.id})
             else:
-                # this means it probably was a save_and_continue_editing
-                pass
-        return response
+                url = reverse(
+                    'admin:filer-directory_listing-unfiled_images')
+            url = "{}{}".format(
+                url,
+                admin_url_params_encoded(request),
+            )
+            return HttpResponseRedirect(url)
+        return super(FileAdmin, self).response_change(request, obj)
 
     def render_change_form(self, request, context, add=False, change=False,
                            form_url='', obj=None):
@@ -132,8 +129,10 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
                               kwargs={'folder_id': parent_folder.id})
             else:
                 url = reverse('admin:filer-directory_listing-unfiled_images')
-            url = "%s%s%s" % (url, popup_param(request),
-                              selectfolder_param(request, "&"))
+            url = "{}{}".format(
+                url,
+                admin_url_params_encoded(request)
+            )
             return HttpResponseRedirect(url)
         return r
 

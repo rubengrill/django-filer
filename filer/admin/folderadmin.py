@@ -9,6 +9,7 @@ import re
 from django import forms
 from django.conf import settings as django_settings
 from django.contrib import messages
+from django.contrib import admin
 from django.contrib.admin import helpers
 from django.core.exceptions import PermissionDenied
 from django.core.exceptions import ValidationError
@@ -43,9 +44,8 @@ from filer.thumbnail_processors import normalize_subject_location
 from filer.utils.compatibility import (
     get_delete_permission, quote, unquote, capfirst)
 from filer.utils.filer_easy_thumbnails import FilerActionThumbnailer
-from filer.views import (popup_status, popup_param, selectfolder_status,
-                         selectfolder_param, admin_url_params_encoded,
-                         admin_url_params, AdminUrlParams)
+from filer.views import (popup_status, popup_param, admin_url_params_encoded,
+                         AdminUrlParams)
 
 
 class AddFolderPopupForm(forms.ModelForm):
@@ -122,24 +122,22 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
         Overrides the default to be able to forward to the directory listing
         instead of the default change_list_view
         """
-        r = super(FolderAdmin, self).response_change(request, obj)
-        # Code from django ModelAdmin to determine changelist on the fly
-        if 'Location' in r and r['Location']:
-            # it was a successful save
-            if (r['Location'] in ['../'] or
-                    r['Location'] == self._get_post_url(obj)):
-                if obj.parent:
-                    url = reverse('admin:filer-directory_listing',
-                                  kwargs={'folder_id': obj.parent.id})
-                else:
-                    url = reverse('admin:filer-directory_listing-root')
-                url = "%s%s%s" % (url, popup_param(request),
-                                  selectfolder_param(request, "&"))
-                return HttpResponseRedirect(url)
+        if (
+            admin.options.IS_POPUP_VAR in request.POST and
+            '_pick' in request.POST and
+            '_continue' not in request.POST
+        ):
+            if obj.parent:
+                url = reverse('admin:filer-directory_listing',
+                              kwargs={'folder_id': obj.parent.id})
             else:
-                # this means it probably was a save_and_continue_editing
-                pass
-        return r
+                url = reverse('admin:filer-directory_listing-root')
+            url = "{}{}".format(
+                url,
+                admin_url_params_encoded(request),
+            )
+            return HttpResponseRedirect(url)
+        return super(FolderAdmin, self).response_change(request, obj)
 
     def render_change_form(self, request, context, add=False, change=False,
                            form_url='', obj=None):
@@ -178,8 +176,10 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
                               kwargs={'folder_id': parent_folder.id})
             else:
                 url = reverse('admin:filer-directory_listing-root')
-            url = "%s%s%s" % (url, popup_param(request),
-                              selectfolder_param(request, "&"))
+            url = "{}{}".format(
+                url,
+                admin_url_params_encoded(request),
+            )
             return HttpResponseRedirect(url)
         return r
 

@@ -26,8 +26,9 @@ filer_actions = register.inclusion_tag(
 
 
 @register.simple_tag(takes_context=True)
-def filer_admin_context_url_params(context, full=True):
-    return admin_url_params_encoded(context['request'], full=full)
+def filer_admin_context_url_params(context, first_separator='?'):
+    return admin_url_params_encoded(
+        context['request'], first_separator=first_separator)
 
 
 @register.simple_tag(takes_context=True)
