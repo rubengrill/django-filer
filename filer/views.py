@@ -78,12 +78,14 @@ class AdminUrlParams(dict):
         super(AdminUrlParams, self).__init__()
         self.request = request
         self.update(admin_url_params(request))
+        extra = {}
         for key, value in self.items():
             if key.startswith('_'):
-                self[key[1:]] = value
+                extra[key[1:]] = value
             if key == '_pick':
                 for pick_type in ALLOWED_PICK_TYPES:
-                    self['pick_{}'.format(pick_type)] = value == pick_type
+                    extra['pick_{}'.format(pick_type)] = value == pick_type
+        self.update(extra)
 
 
 def _userperms(item, request):
