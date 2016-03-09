@@ -104,26 +104,22 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
         before super, because super will delete the object and make it
         impossible to find out the parent folder to redirect to.
         """
-        parent_folder = None
         try:
             obj = self.get_queryset(request).get(pk=unquote(object_id))
             parent_folder = obj.folder
         except self.model.DoesNotExist:
-            obj = None
+            parent_folder = None
 
-        r = super(FileAdmin, self).delete_view(
-            request=request, object_id=object_id,
-            extra_context=extra_context)
-
-        url = r.get("Location", None)
-        # Account for custom Image model
-        image_change_list_url_name = 'admin:{0}_{1}_changelist'.format(
-            Image._meta.app_label, Image._meta.model_name)
-        # Check against filer_file_changelist as file deletion is always made
-        # by the base class
-        if (url in ["../../../../", "../../"] or
-                url == reverse("admin:filer_file_changelist") or
-                url == reverse(image_change_list_url_name)):
+        if (
+            request.POST and
+            admin.options.IS_POPUP_VAR in request.POST and
+            '_pick' in request.GET
+        ):
+            # popup in pick mode. call super delete view so the objects
+            # actually get deleted. Don't use the return value though.
+            super(FileAdmin, self).delete_view(
+                request=request, object_id=object_id,
+                extra_context=extra_context)
             if parent_folder:
                 url = reverse('admin:filer-directory_listing',
                               kwargs={'folder_id': parent_folder.id})
@@ -134,7 +130,10 @@ class FileAdmin(PrimitivePermissionAwareModelAdmin):
                 admin_url_params_encoded(request)
             )
             return HttpResponseRedirect(url)
-        return r
+
+        return super(FileAdmin, self).delete_view(
+            request=request, object_id=object_id,
+            extra_context=extra_context)
 
     def get_model_perms(self, request):
         """

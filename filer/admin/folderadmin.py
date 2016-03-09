@@ -158,19 +158,21 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
         before super, because super will delete the object and make it
         impossible to find out the parent folder to redirect to.
         """
-        parent_folder = None
         try:
             obj = self.get_queryset(request).get(pk=unquote(object_id))
             parent_folder = obj.parent
         except self.model.DoesNotExist:
-            obj = None
-
-        r = super(FolderAdmin, self).delete_view(
-            request=request, object_id=object_id,
-            extra_context=extra_context)
-
-        url = r.get("Location", None)
-        if url in ["../../../../", "../../"] or url == self._get_post_url(obj):
+            parent_folder = None
+        if (
+            request.POST and
+            admin.options.IS_POPUP_VAR in request.POST and
+            '_pick' in request.GET
+        ):
+            # popup in pick mode. call super delete view so the objects
+            # actually get deleted. Don't use the return value though.
+            super(FolderAdmin, self).delete_view(
+                request=request, object_id=object_id,
+                extra_context=extra_context)
             if parent_folder:
                 url = reverse('admin:filer-directory_listing',
                               kwargs={'folder_id': parent_folder.id})
@@ -181,7 +183,9 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
                 admin_url_params_encoded(request),
             )
             return HttpResponseRedirect(url)
-        return r
+        return super(FolderAdmin, self).delete_view(
+            request=request, object_id=object_id,
+            extra_context=extra_context)
 
     def icon_img(self, xs):
         return mark_safe(('<img src="%simg/icons/plainfolder_32x32.png" '
