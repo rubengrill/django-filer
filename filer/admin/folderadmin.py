@@ -168,8 +168,9 @@ class FolderAdmin(PrimitivePermissionAwareModelAdmin):
             admin.options.IS_POPUP_VAR in request.POST and
             '_pick' in request.GET
         ):
-            # popup in pick mode. call super delete view so the objects
-            # actually get deleted. Don't use the return value though.
+            # Popup in pick mode. Call super delete view so the objects
+            # actually get deleted. All possible failures in delete_view cause
+            # exceptions, so it is safe to ignore the return value though.
             super(FolderAdmin, self).delete_view(
                 request=request, object_id=object_id,
                 extra_context=extra_context)
